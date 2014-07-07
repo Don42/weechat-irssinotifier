@@ -8,7 +8,7 @@ Weechat plugin to bring the great IrssiNotifier push notifications with end-to-e
 In order to use the plugin you need to take the following steps:
 
 1. Apply for an account at https://irssinotifier.appspot.com
-2. Note the "API token" from your profile page: https://irssinotifier.appspot.com/#profile 
+2. Note the "API token" from your profile page: https://irssinotifier.appspot.com/#profile
 3. Install the IrssiNotifier app from the Play store https://play.google.com/store/apps/details?id=fi.iki.murgo.irssinotifier
 4. Setup the app by logging in and choosing an encryption password
 5. put "irssinotifier.py" to ~/.weechat/python
@@ -22,12 +22,13 @@ You're done. From now on you should receive push notifications to your Android f
 ## Todo
 
 1. Make it configurable to notify about current window or not.
-2. Make it configurable to notify only while being in away mode.
-3. Make it configurable to send more details (e.g. local timestamp).
+2. Make it configurable to send more details (e.g. local timestamp).
+3. Make it configurable to notify only after a period of inactivity
+4. General feature parity with the irssi version (as feasible)
 
 ## Security
 
-This plugin enforces end-to-end encryption. It uses openssl aes-128-cbc for symmetric encryption in the Weechat client and decrypts it on your Android phone. 
+This plugin enforces end-to-end encryption. It uses openssl aes-128-cbc for symmetric encryption in the Weechat client and decrypts it on your Android phone.
 
 ## Dependencies
 
