@@ -20,7 +20,8 @@
 # 2013-12-07, zigdon
 #     version 0.6.2: - support ignoring all buffers in a server, add help text.
 # 2013-08-20, balu
-#     version 0.6.1: - support for every private notification not only irc (especialy also jabber)
+#     version 0.6.1: - support for every private notification not only irc
+#                      (especialy also jabber)
 # 2013-08-16, kang@insecure.ws
 #     version 0.6: - only_away option (only notify if set away)
 # 2013-01-18, ccm <ccm@screenage.de>:
@@ -43,14 +44,19 @@
 # 2012-10-26, ccm <ccm@screenage.de>:
 #     version 0.1: - initial release - working proof of concept
 
-import weechat, string, os, urllib, urllib2, shlex
+import weechat
+import string
+import os
+import urllib
+import shlex
 from subprocess import Popen, PIPE
 
 weechat.register("irssinotifier",
                  "Caspar Clemens Mierau <ccm@screenage.de>",
                  "0.6.2",
                  "GPL3",
-                 "irssinotifier: Send push notifications to Android's IrssiNotifier about your private message and highligts.",
+                 """irssinotifier: Send push notifications to Android's
+                 IrssiNotifier about your private message and highligts.""",
                  "",
                  "")
 
@@ -69,8 +75,14 @@ for option, help_text in settings.items():
         weechat.config_set_plugin(option, "")
 
     if option in required_settings and weechat.config_get_plugin(option) == "":
-        weechat.prnt("", weechat.prefix("error") + "irssinotifier: Please set option: %s" % option)
-        weechat.prnt("", "irssinotifier: /set plugins.var.python.irssinotifier.%s STRING" % option)
+        weechat.prnt("", "{prefix}{message} {opt}".format(
+            prefix=weechat.prefix("error"),
+            message="irssinotifier: Please set option: %s",
+            opt=option))
+        weechat.prnt("",
+                     """irssinotifier: /set
+                     plugins.var.python.irssinotifier.{option}
+                     STRING""".format(option))
 
     weechat.config_set_desc_plugin(option, help_text)
 
@@ -78,9 +90,10 @@ for option, help_text in settings.items():
 weechat.hook_print("", "notify_message", "", 1, "notify_show", "")
 weechat.hook_print("", "notify_private", "", 1, "notify_show", "")
 
+
 # Functions
 def notify_show(data, bufferp, uber_empty, tagsn, isdisplayed,
-        ishilight, prefix, message):
+                ishilight, prefix, message):
 
     # irc PMs are caught by notify_private, but we need notify_message to
     # capture hilights in channels.
@@ -88,24 +101,26 @@ def notify_show(data, bufferp, uber_empty, tagsn, isdisplayed,
         return weechat.WEECHAT_RC_OK
 
     # are we away?
-    away = weechat.buffer_get_string(bufferp,"localvar_away")
+    away = weechat.buffer_get_string(bufferp, "localvar_away")
     if (away == "" and weechat.config_get_plugin("only_away") == "on"):
         return weechat.WEECHAT_RC_OK
 
     # get local nick for buffer
-    mynick = weechat.buffer_get_string(bufferp,"localvar_nick")
+    mynick = weechat.buffer_get_string(bufferp, "localvar_nick")
 
     # get buffer info
-    name = weechat.buffer_get_string(bufferp,"name")
+    name = weechat.buffer_get_string(bufferp, "name")
     server = weechat.buffer_get_string(bufferp, "localvar_server")
     channel = weechat.buffer_get_string(bufferp, "localvar_channel")
 
     # ignore buffers on ignorelists
     if not (server in weechat.config_get_plugin("ignore_servers") or
-        name in weechat.config_get_plugin("ignore_buffers").split(",")):
+            name in weechat.config_get_plugin("ignore_buffers").split(",")):
 
         # only notify if the message was not sent by myself
-        if (weechat.buffer_get_string(bufferp, "localvar_type") == "private") and (prefix!=mynick):
+        if (weechat.buffer_get_string(bufferp,
+                                      "localvar_type"
+                                      ) == "private") and (prefix != mynick):
             show_notification(channel, prefix, message)
 
         elif ishilight == "1":
@@ -114,23 +129,44 @@ def notify_show(data, bufferp, uber_empty, tagsn, isdisplayed,
 
     return weechat.WEECHAT_RC_OK
 
+
 def encrypt(text):
     encryption_password = weechat.config_get_plugin("encryption_password")
-    command="openssl enc -aes-128-cbc -salt -base64 -A -pass env:OpenSSLEncPW"
-    opensslenv = os.environ.copy();
+    command = "openssl enc -aes-128-cbc -salt -base64 -A "
+    "-pass env:OpenSSLEncPW"
+    opensslenv = os.environ.copy()
     opensslenv['OpenSSLEncPW'] = encryption_password
-    output,errors = Popen(shlex.split(command),stdin=PIPE,stdout=PIPE,stderr=PIPE,env=opensslenv).communicate(text+" ")
-    output = string.replace(output,"/","_")
-    output = string.replace(output,"+","-")
-    output = string.replace(output,"=","")
+    output, errors = Popen(shlex.split(command),
+                           stdin=PIPE,
+                           stdout=PIPE,
+                           stderr=PIPE,
+                           env=opensslenv).communicate("{0} ".format(text))
+    output = string.replace(output, "/", "_")
+    output = string.replace(output, "+", "-")
+    output = string.replace(output, "=", "")
     return output
+
 
 def show_notification(chan, nick, message):
     API_TOKEN = weechat.config_get_plugin("api_token")
     if API_TOKEN != "":
         url = "https://irssinotifier.appspot.com/API/Message"
-        postdata = urllib.urlencode({'apiToken':API_TOKEN,'nick':encrypt(nick),'channel':encrypt(chan),'message':encrypt(message),'version':13})
-        version = weechat.info_get("version_number", "") or 0
-        hook1 = weechat.hook_process_hashtable("url:"+url, { "postfields":  postdata}, 2000, "", "")
+        postdata = urllib.urlencode(
+            {'apiToken': API_TOKEN,
+             'nick': encrypt(nick),
+             'channel': encrypt(chan),
+             'message': encrypt(message),
+             'version': 13})
+#        version = weechat.info_get("version_number", "") or 0
+        weechat.hook_process_hashtable("url:{0}".format(url),
+                                       {"postfields":  postdata},
+                                       2000,
+                                       "",
+                                       "")
+
+
+def attached():
+    return False
+#    return (tmux_attached() or screen_attached())
 
 # vim: autoindent expandtab smarttab shiftwidth=4
